@@ -1,26 +1,58 @@
-// create web server
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
+// Create web server
+var express = require('express');
+var app = express();
+var fs = require('fs');
+var bodyParser = require('body-parser');
+var urlencodedParser = bodyParser.urlencoded({ extended: false });
 
-const server = http.createServer((req, res) => {
-    if(req.url === '/') {
-        fs.readFile(path.join(__dirname, 'public', 'index.html'), (err, content) => {
-            if(err) throw err;
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(content);
-        });
-    }
+app.use(express.static('public'));
 
-    if(req.url === '/api/comments') {
-        fs.readFile(path.join(__dirname, 'public', 'comments.json'), (err, content) => {
-            if(err) throw err;
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(content);
-        });
-    }
+// Read comments from comments.json
+app.get('/listComments', function (req, res) {
+    fs.readFile(__dirname + '/' + 'comments.json', 'utf8', function (err, data) {
+        res.end(data);
+    });
 });
 
-const PORT = process.env.PORT || 3000;
+// Add a comment
+app.post('/addComment', urlencodedParser, function (req, res) {
+    // Prepare output in JSON format
+    var comment = {
+        "name": req.body.name,
+        "comment": req.body.comment
+    };
+    fs.readFile(__dirname + '/' + 'comments.json', 'utf8', function (err, data) {
+        data = JSON.parse(data);
+        data.push(comment);
+        fs.writeFile(__dirname + '/' + 'comments.json', JSON.stringify(data), function (err) {
+            if (err) {
+                console.log(err);
+            }
+        });
+        res.end(JSON.stringify(data));
+    });
+});
 
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Delete a comment
+app.post('/deleteComment', urlencodedParser, function (req, res) {
+    // Prepare output in JSON format
+    var index = req.body.index;
+    fs.readFile(__dirname + '/' + 'comments.json', 'utf8', function (err, data) {
+        data = JSON.parse(data);
+        data.splice(index, 1);
+        fs.writeFile(__dirname + '/' + 'comments.json', JSON.stringify(data), function (err) {
+            if (err) {
+                console.log(err);
+            }
+        });
+        res.end(JSON.stringify(data));
+    });
+});
+
+// Start web server
+var server = app.listen(8081, function () {
+    var host = server.address().address;
+    var port = server.address().port;
+
+    console.log("Web server started at http://%s:%s", host, port);
+});
